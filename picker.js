@@ -1,5 +1,6 @@
 (() => {
   const page = discordMessageCleanerPage;
+  const history = discordMessageCleanerHistory;
   if (!page.chat()) return false;
 
   const panelId = 'discord-message-cleaner-picker';
@@ -16,44 +17,49 @@
   panel.innerHTML = `
     <header class="dmc-heading">
       <div><h2>消息清理</h2><p data-chat></p></div>
-      <button type="button" data-close aria-label="关闭清理面板">关闭</button>
+      <button type="button" data-close aria-label="关闭清理面板">×</button>
     </header>
-    <form data-filters>
-      <fieldset>
-        <div class="dmc-grid">
-          <label>聊天范围<select name="scope"><option value="current">当前聊天</option><option value="dm">私信和群聊</option></select></label>
-          <label>发送者<input name="author" list="dmc-authors" placeholder="全部，或填入显示名 / ID"></label>
-        </div>
-        <datalist id="dmc-authors"></datalist>
-        <details>
-          <summary>高级筛选</summary>
-          <label>消息内容<input name="query" maxlength="200" placeholder="输入关键词或正则表达式"></label>
-          <label class="dmc-check"><input name="regex" type="checkbox">使用正则表达式</label>
+    <div class="dmc-body">
+      <form data-filters>
+        <fieldset>
           <div class="dmc-grid">
-            <label>开始日期<input name="from" type="date"></label>
-            <label>结束日期<input name="to" type="date"></label>
-            <label>消息类型<select name="type"><option value="any">全部类型</option><option value="media">含媒体或附件</option><option value="text">纯文本</option></select></label>
-            <label>处理顺序<select name="order"><option value="newest">最新优先</option><option value="oldest">最早优先</option></select></label>
+            <label>聊天范围<select name="scope"><option value="current">当前聊天</option><option value="dm">私信和群聊</option></select></label>
+            <label>发送者<input name="author" list="dmc-authors" placeholder="所有发送者"></label>
           </div>
-        </details>
-        <div class="dmc-actions">
-          <button type="button" data-scan>读取当前聊天</button>
-          <button type="button" data-dm hidden>扫描私信列表</button>
-          <button type="submit" data-apply>应用筛选</button>
-        </div>
-      </fieldset>
-    </form>
-    <section class="dmc-preview" aria-label="候选消息">
-      <div class="dmc-preview-heading"><strong data-count></strong><button type="button" data-select-all>全选匹配</button></div>
-      <ul data-results></ul>
-      <div class="dmc-pagination" hidden><button type="button" data-prev>上一页</button><span data-page></span><button type="button" data-next>下一页</button></div>
-    </section>
-    <p class="dmc-status" data-status role="status"></p>
-    <footer class="dmc-actions">
-      <button type="button" data-quick>快速点选</button>
-      <button type="button" data-stop hidden>停止扫描</button>
-      <button type="button" data-skip disabled>跳过本条</button>
-      <button type="button" data-process class="dmc-primary">处理下一条</button>
+          <datalist id="dmc-authors"></datalist>
+          <details>
+            <summary>高级筛选</summary>
+            <label>消息内容<input name="query" maxlength="200" placeholder="输入关键词或正则表达式"></label>
+            <label class="dmc-check"><input name="regex" type="checkbox">使用正则表达式</label>
+            <div class="dmc-grid">
+              <label>开始日期<input name="from" type="date"></label>
+              <label>结束日期<input name="to" type="date"></label>
+              <label>消息类型<select name="type"><option value="any">全部类型</option><option value="media">含媒体或附件</option><option value="text">纯文本</option></select></label>
+              <label>处理顺序<select name="order"><option value="newest">最新优先</option><option value="oldest">最早优先</option></select></label>
+            </div>
+          </details>
+          <div class="dmc-actions">
+            <button type="button" data-scan>刷新已加载</button>
+            <button type="button" data-history>扫描聊天历史</button>
+            <button type="button" data-dm hidden>扫描所有私信</button>
+          </div>
+          <button type="submit" class="dmc-visually-hidden" tabindex="-1">应用筛选</button>
+        </fieldset>
+      </form>
+      <section class="dmc-preview" aria-label="候选消息">
+        <div class="dmc-preview-heading"><div><h3 data-count></h3><p data-coverage></p></div><button type="button" data-select-all>全选匹配</button></div>
+        <ul data-results></ul>
+        <div class="dmc-pagination" hidden><button type="button" data-prev>上一页</button><span data-page></span><button type="button" data-next>下一页</button></div>
+      </section>
+    </div>
+    <footer class="dmc-footer">
+      <p class="dmc-status" data-status role="status"></p>
+      <div class="dmc-actions">
+        <button type="button" data-quick>快速点选</button>
+        <button type="button" data-stop hidden>停止</button>
+        <button type="button" data-skip disabled>跳过本条</button>
+        <button type="button" data-process class="dmc-primary">处理下一条</button>
+      </div>
     </footer>
   `;
   document.body.append(panel);
@@ -66,6 +72,7 @@
   const processButton = find('[data-process]');
   const skipButton = find('[data-skip]');
   const scanButton = find('[data-scan]');
+  const historyButton = find('[data-history]');
   const dmButton = find('[data-dm]');
   const quickButton = find('[data-quick]');
   const stopButton = find('[data-stop]');
@@ -73,33 +80,43 @@
   const dateFormat = new Intl.DateTimeFormat('zh-CN', { dateStyle: 'short', timeStyle: 'short' });
   const lifetime = new AbortController();
   const records = new Map();
+  const coverage = new Map();
   const selected = new Set();
-  const pageSize = 16;
+  const pageSize = 12;
   let matches = [];
   let pageIndex = 0;
   let busy = false;
   let operation;
   let activeChat = page.chat();
   let quickStatus;
+  let filterTimer;
+  let appliedFiltersKey;
+  let appliedChannelId;
 
   find('[data-close]').addEventListener('click', close);
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     applyFilters();
   });
-  fields.scope.addEventListener('change', () => applyFilters());
+  form.addEventListener('input', scheduleFilters);
+  form.addEventListener('change', scheduleFilters);
   scanButton.addEventListener('click', () => {
     readCurrent();
     applyFilters();
   });
+  historyButton.addEventListener('click', () => {
+    const conversation = page.chat();
+    if (conversation?.id) run((signal) => scanCurrentHistory(conversation, signal), true);
+  });
   dmButton.addEventListener('click', () => run(scanDirectMessages, true));
   stopButton.addEventListener('click', () => operation?.abort());
   processButton.addEventListener('click', (event) => {
-    if (event.shiftKey) return;
+    if (event.shiftKey || !queueReady()) return;
     const message = matches.find((candidate) => selected.has(candidate.id));
-    if (message) run((signal) => processMessage(message, signal));
+    if (message) run((signal) => processMessage(message, signal), true);
   });
   skipButton.addEventListener('click', () => {
+    if (!queueReady()) return;
     const message = matches.find((candidate) => selected.has(candidate.id));
     if (!message) return;
     selected.delete(message.id);
@@ -108,6 +125,7 @@
   });
   quickButton.addEventListener('click', startQuickSelect);
   selectAll.addEventListener('click', () => {
+    if (!queueReady()) return;
     const clear = matches.length > 0 && matches.every((message) => selected.has(message.id));
     for (const message of matches) {
       if (clear) selected.delete(message.id);
@@ -133,7 +151,11 @@
     if (next.id !== activeChat.id || next.guild !== activeChat.guild) {
       activeChat = next;
       stopQuickSelect();
-      if (!busy) applyFilters('已切换聊天。点击读取可加入这段对话当前加载的消息。');
+      if (!busy) {
+        if (fields.scope.value === 'current') selected.clear();
+        readCurrent();
+        applyFilters();
+      }
     } else if (next.title !== activeChat.title) {
       activeChat = next;
       updateChatLabel();
@@ -153,6 +175,7 @@
     lifetime.abort();
     operation?.abort();
     clearInterval(navigation);
+    clearTimeout(filterTimer);
     stopQuickSelect();
     panel.remove();
   }
@@ -161,17 +184,67 @@
     const conversation = page.chat();
     if (!conversation?.id) return 0;
     const messages = page.readChat(conversation);
-    for (const message of messages) records.set(message.id, message);
+    saveMessages(messages);
     return messages.length;
+  }
+
+  function saveMessages(messages) {
+    for (const message of messages) {
+      const prior = records.get(message.id);
+      records.set(message.id, {
+        ...message,
+        author: message.author || prior?.author || '',
+        authorId: message.authorId || prior?.authorId || '',
+      });
+    }
   }
 
   function updateChatLabel() {
     find('[data-chat]').textContent = page.chat()?.title ?? 'Discord';
   }
 
-  function applyFilters(note = '目前仅预览已加载的消息。Discord 会在处理时检查删除权限。') {
+  function readFilters() {
+    return {
+      scope: fields.scope.value,
+      author: fields.author.value,
+      query: fields.query.value,
+      regex: fields.regex.checked,
+      from: fields.from.value,
+      to: fields.to.value,
+      type: fields.type.value,
+      order: fields.order.value,
+    };
+  }
+
+  function scheduleFilters() {
+    if (!filterTimer && JSON.stringify(readFilters()) === appliedFiltersKey) return;
+    const firstChange = !filterTimer;
+    selected.clear();
+    clearTimeout(filterTimer);
+    filterTimer = setTimeout(() => applyFilters(), 160);
+    if (firstChange) {
+      status.textContent = '正在更新筛选…';
+      render();
+    }
+  }
+
+  function queueReady() {
+    return !busy && !filterTimer && JSON.stringify(readFilters()) === appliedFiltersKey &&
+      (fields.scope.value === 'dm' || appliedChannelId === page.chat()?.id);
+  }
+
+  function applyFilters(note = '每条消息均由 Discord 确认删除权限。') {
+    clearTimeout(filterTimer);
+    filterTimer = undefined;
     const conversation = page.chat();
-    const scope = fields.scope.value;
+    const filters = readFilters();
+    const { scope } = filters;
+    const filterKey = JSON.stringify(filters);
+    if (filterKey !== appliedFiltersKey || (scope === 'current' && conversation?.id !== appliedChannelId)) {
+      selected.clear();
+    }
+    appliedFiltersKey = filterKey;
+    appliedChannelId = conversation?.id;
     const pool = [...records.values()].filter((message) =>
       scope === 'dm' ? message.guild === '@me' : message.channelId === conversation?.id,
     );
@@ -189,15 +262,7 @@
     }));
 
     try {
-      matches = page.filterMessages(pool, {
-        author: fields.author.value,
-        query: fields.query.value,
-        regex: fields.regex.checked,
-        from: fields.from.value,
-        to: fields.to.value,
-        type: fields.type.value,
-        order: fields.order.value,
-      });
+      matches = page.filterMessages(pool, filters);
       status.textContent = note;
     } catch (error) {
       matches = [];
@@ -215,18 +280,20 @@
   function render() {
     const totalPages = Math.max(1, Math.ceil(matches.length / pageSize));
     pageIndex = Math.max(0, Math.min(pageIndex, totalPages - 1));
-    dmButton.hidden = fields.scope.value !== 'dm';
-    scanButton.disabled = busy || !page.chat()?.id;
-    scanButton.textContent = fields.scope.value === 'dm' ? '加入当前私信' : '读取当前聊天';
-    scanButton.hidden = fields.scope.value === 'dm' && page.chat()?.guild !== '@me';
-    processButton.disabled = busy || !selected.size;
-    skipButton.disabled = processButton.disabled;
-    selectAll.disabled = busy || !matches.length;
-    selectAll.textContent = matches.length && selected.size === matches.length ? '清空选择' : '全选匹配';
-    quickButton.disabled = busy || !page.chat()?.id;
-    find('[data-count]').textContent = selected.size
-      ? '匹配 ' + matches.length + ' 条 · 已选 ' + selected.size + ' 条'
-      : '匹配 ' + matches.length + ' 条';
+    const conversation = page.chat();
+    const dmScope = fields.scope.value === 'dm';
+    const roomInScope = Boolean(conversation?.id && (!dmScope || conversation.guild === '@me'));
+    dmButton.hidden = !dmScope;
+    scanButton.disabled = busy || !roomInScope;
+    scanButton.hidden = !roomInScope;
+    historyButton.disabled = busy || !roomInScope;
+    historyButton.hidden = !roomInScope;
+    quickButton.disabled = busy || !conversation?.id;
+    const complete = coverage.get(conversation?.id) === 'start';
+    find('[data-coverage]').textContent = dmScope
+      ? '仅包含已读取的私信和群聊'
+      : complete ? '扫描已到达聊天开头' : '目前仅包含已读取的消息';
+    renderQueue();
     find('.dmc-pagination').hidden = totalPages === 1;
     find('[data-page]').textContent = (pageIndex + 1) + ' / ' + totalPages;
     find('[data-prev]').disabled = busy || pageIndex === 0;
@@ -236,9 +303,20 @@
     if (!matches.length) {
       const empty = document.createElement('li');
       empty.className = 'dmc-empty';
-      empty.textContent = '暂无匹配。可以调整筛选，或在 Discord 加载更多消息后再读取。';
+      empty.textContent = filterTimer ? '正在更新筛选…' : '没有匹配消息。可以调整筛选或继续扫描历史。';
       results.append(empty);
     }
+  }
+
+  function renderQueue() {
+    const available = queueReady();
+    processButton.disabled = !available || !selected.size;
+    skipButton.disabled = processButton.disabled;
+    selectAll.disabled = !available || !matches.length;
+    selectAll.textContent = matches.length && selected.size === matches.length ? '清空选择' : '全选匹配';
+    find('[data-count]').textContent = selected.size
+      ? '匹配 ' + matches.length + ' 条 · 待处理 ' + selected.size + ' 条'
+      : '匹配 ' + matches.length + ' 条';
   }
 
   function previewRow(message) {
@@ -247,14 +325,12 @@
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.checked = selected.has(message.id);
-    checkbox.disabled = busy;
+    checkbox.disabled = !queueReady();
     checkbox.addEventListener('change', () => {
+      if (!queueReady()) return;
       if (checkbox.checked) selected.add(message.id);
       else selected.delete(message.id);
-      processButton.disabled = !selected.size;
-      skipButton.disabled = processButton.disabled;
-      selectAll.textContent = selected.size === matches.length ? '清空选择' : '全选匹配';
-      find('[data-count]').textContent = '匹配 ' + matches.length + ' 条 · 已选 ' + selected.size + ' 条';
+      renderQueue();
     });
     const details = document.createElement('span');
     const meta = document.createElement('span');
@@ -265,6 +341,7 @@
     const preview = document.createElement('span');
     preview.className = 'dmc-text';
     preview.textContent = message.text || (message.media ? '媒体或附件' : '无文本正文');
+    if (message.text) preview.title = message.text;
     details.append(meta, preview);
     label.append(checkbox, details);
     item.append(label);
@@ -274,6 +351,7 @@
   async function run(task, stoppable = false) {
     if (busy) return;
     stopQuickSelect();
+    if (filterTimer) applyFilters();
     busy = true;
     operation = new AbortController();
     const { signal } = operation;
@@ -295,7 +373,12 @@
         stopButton.hidden = true;
         find('fieldset').disabled = false;
         updateChatLabel();
-        render();
+        if (fields.scope.value === 'current' && appliedChannelId !== page.chat()?.id) {
+          readCurrent();
+          applyFilters('聊天已切换，队列已重置。');
+        } else {
+          render();
+        }
       }
     }
   }
@@ -313,6 +396,26 @@
     if (!entry) return false;
     entry.click();
     return await page.waitFor(() => page.chat()?.id === channelId, signal);
+  }
+
+  async function scanCurrentHistory(conversation, signal) {
+    let read = 0;
+    status.textContent = '正在扫描聊天历史…';
+    const result = await history.scan(conversation, signal, (messages, count) => {
+      saveMessages(messages);
+      read = count;
+      status.textContent = '正在扫描聊天历史，已读取 ' + read + ' 条…';
+    });
+    if (lifetime.signal.aborted) return;
+    if (result === 'start') coverage.set(conversation.id, 'start');
+    const total = '已读取 ' + read + ' 条。';
+    const message = {
+      start: '已到达聊天开头。',
+      edge: 'Discord 暂未加载更早消息，可再次扫描。',
+      unavailable: '无法识别聊天滚动区域，可手动滚动后刷新已加载消息。',
+      interrupted: '扫描已停止。',
+    };
+    applyFilters(total + message[result]);
   }
 
   async function scanDirectMessages(signal) {
@@ -339,14 +442,19 @@
     }
 
     let scanned = 0;
+    let reachedStart = 0;
     for (const [index, channelId] of dmIds.entries()) {
       if (signal.aborted) break;
       status.textContent = '正在检查私信 ' + (index + 1) + ' / ' + dmIds.length + '…';
       if (!await visitDm(channelId, signal)) continue;
-      await page.waitFor(() => page.readChat(page.chat()).length, signal, 1800);
-      if (!signal.aborted && page.chat()?.id === channelId) {
-        readCurrent();
-        scanned++;
+      const result = await history.scan(page.chat(), signal, (messages, count) => {
+        saveMessages(messages);
+        status.textContent = '正在扫描私信 ' + (index + 1) + ' / ' + dmIds.length + '，已读取 ' + count + ' 条…';
+      });
+      if (!signal.aborted && page.chat()?.id === channelId) scanned++;
+      if (result === 'start') {
+        coverage.set(channelId, 'start');
+        reachedStart++;
       }
     }
     if (!signal.aborted && previous?.guild === '@me' && previous.id) {
@@ -354,16 +462,18 @@
     }
     if (!lifetime.signal.aborted) {
       const prefix = signal.aborted ? '扫描已停止。已检查 ' : '已检查 ';
-      applyFilters(prefix + scanned + ' / ' + dmIds.length + ' 个列出的私信或群聊。仅包含各聊天已加载的消息。');
+      applyFilters(prefix + scanned + ' / ' + dmIds.length + ' 个会话，' + reachedStart + ' 个读到聊天开头。');
     }
   }
 
   async function processMessage(message, signal) {
-    if (page.chat()?.id !== message.channelId && message.guild === '@me') {
+    if (page.chat()?.id !== message.channelId && fields.scope.value === 'dm' && message.guild === '@me') {
       status.textContent = '正在打开该消息所在的私信…';
-      if (await visitDm(message.channelId, signal)) {
-        await page.waitFor(() => document.getElementById('chat-messages-' + message.channelId + '-' + message.id), signal);
-      }
+      await visitDm(message.channelId, signal);
+    }
+    if (page.chat()?.id === message.channelId && !page.rowFor(message)) {
+      status.textContent = '正在聊天历史中定位选中的消息…';
+      await history.locate(message, signal);
     }
     // Reveal the original message and give Discord's confirmation the full screen.
     panel.hidden = true;
@@ -378,7 +488,7 @@
       return;
     }
 
-    if (result === 'unchanged' || result === 'unavailable') selected.delete(message.id);
+    if (result === 'cancelled' || result === 'unavailable') selected.delete(message.id);
     const outcome = {
       'wrong-chat': '请打开该消息所在的聊天后重试。',
       'busy': '请先关闭 Discord 当前打开的菜单或对话框。',
@@ -387,7 +497,8 @@
       'menu-missing': '无法打开原生消息菜单，可尝试用 Discord 的右键菜单。',
       'unavailable': 'Discord 没有提供这条消息的删除选项，已跳过。可按 Esc 关闭原生菜单。',
       'dialog-missing': 'Discord 没有显示删除确认框，请检查原生消息菜单。',
-      'unchanged': '该消息仍在聊天中，已从本次队列移出。',
+      'cancelled': '已取消，消息保留。可继续处理下一条。',
+      'unchanged': '未看到消息移除，当前条目仍留在队列中。',
     };
     status.textContent = outcome[result];
   }

@@ -31,7 +31,10 @@ async function openPanel() {
     status.textContent = '正在打开清理面板…';
     const target = { tabId: tab.id };
     await chrome.scripting.insertCSS({ target, files: ['picker.css'] });
-    const [injection] = await chrome.scripting.executeScript({ target, files: ['messages.js', 'picker.js'] });
+    const [injection] = await chrome.scripting.executeScript({
+      target,
+      files: ['messages.js', 'history.js', 'picker.js'],
+    });
     if (injection?.result !== true) throw new Error('The cleanup panel did not initialize.');
     window.close();
   } catch (error) {

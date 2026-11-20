@@ -60,7 +60,7 @@ var discordMessageCleanerPage = (() => {
       return true;
     }).sort((a, b) => {
       // Discord message IDs are decimal snowflakes of up to 20 digits.
-      const byId = a.id.length - b.id.length || a.id.localeCompare(b.id);
+      const byId = compareIds(a.id, b.id);
       return order === 'oldest' ? byId : -byId;
     });
   }
@@ -87,6 +87,41 @@ var discordMessageCleanerPage = (() => {
 
   function rowFor(message) {
     return document.getElementById(`chat-messages-${message.channelId}-${message.id}`);
+  }
+
+  function compareIds(a, b) {
+    return a.length - b.length || a.localeCompare(b);
+  }
+
+  async function waitForDismissal(dialog, message, signal) {
+    let intent;
+    const trackButton = (event) => {
+      const button = event.target.closest?.('button');
+      if (!button) return;
+      const classes = [...button.classList];
+      const label = button.textContent.trim();
+      if (/^(删除|Delete)$/i.test(label) || classes.some((name) => name.startsWith('critical-primary_'))) {
+        intent = 'confirm';
+      } else if (/^(取消|Cancel)$/i.test(label) || classes.some((name) => /^(secondary|icon-only)_/.test(name))) {
+        intent = 'cancel';
+      }
+    };
+    const trackEscape = (event) => {
+      if (event.key === 'Escape' && intent !== 'confirm') intent = 'cancel';
+    };
+    dialog.addEventListener('click', trackButton, true);
+    document.addEventListener('keydown', trackEscape, true);
+    try {
+      await waitFor(() => !dialog.isConnected || chat()?.id !== message.channelId, signal, Infinity);
+    } finally {
+      dialog.removeEventListener('click', trackButton, true);
+      document.removeEventListener('keydown', trackEscape, true);
+    }
+    if (signal.aborted || chat()?.id !== message.channelId) return 'interrupted';
+    if (intent === 'cancel') return 'cancelled';
+    const removed = await waitFor(() => !rowFor(message), signal, 2000);
+    if (signal.aborted || chat()?.id !== message.channelId) return 'interrupted';
+    return removed ? 'removed' : 'unchanged';
   }
 
   async function openDelete(message, signal) {
@@ -126,13 +161,11 @@ var discordMessageCleanerPage = (() => {
     action.click();
     const dialog = await waitFor(() => document.querySelector(dialogSelector), signal, 1500);
     if (!dialog) return rowFor(message) ? 'dialog-missing' : 'removed';
-    await waitFor(() => !dialog.isConnected || chat()?.id !== message.channelId, signal, Infinity);
-    if (signal.aborted || chat()?.id !== message.channelId) return 'interrupted';
-    const removed = await waitFor(() => !rowFor(message), signal, 2000);
-    return removed ? 'removed' : 'unchanged';
+    return waitForDismissal(dialog, message, signal);
   }
 
   return {
-    rowSelector, dmHomeSelector, chat, getMessage, readChat, filterMessages, dmEntries, waitFor, openDelete,
+    rowSelector, dmHomeSelector, chat, getMessage, readChat, filterMessages, dmEntries,
+    waitFor, rowFor, compareIds, openDelete,
   };
 })();
