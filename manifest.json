@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Discord 消息清理",
+  "version": "0.1.0",
+  "description": "点选 Discord 网页中的一条消息，打开 Discord 的原生删除确认框。",
+  "permissions": ["activeTab", "scripting"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Discord 消息清理"
+  }
+}

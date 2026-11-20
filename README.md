@@ -1,2 +1,19 @@
-# discord-message-cleaner
-Chrome 扩展：在 Discord 网页中快速定位并删除消息
+# Discord 消息清理
+
+一个 Chrome Manifest V3 扩展。点击要删除的消息后，扩展打开 Discord 的原生删除确认框。适用于 Discord 网页版的文字频道和私信，具体能删除哪些消息由 Discord 的权限决定。
+
+## 安装
+
+1. 克隆本仓库，或通过 GitHub 的 **Code → Download ZIP** 下载并解压。
+2. 在 Chrome 地址栏打开 `chrome://extensions/`，开启右上角的 **开发者模式**。
+3. 点击 **加载已解压的扩展程序**，选择包含 `manifest.json` 的目录。
+
+## 使用
+
+1. 在 `discord.com` 打开包含消息的文字频道或私信。
+2. 点击 Chrome 工具栏里的 **Discord 消息清理**。页面会提示你选择一条消息。
+3. 点击该消息正文的普通文本或该行空白处。核对 Discord 展示的消息预览后，点击 **删除** 或 **取消**。
+
+再次点击扩展、按 `Esc` 或点页面上的 **退出** 都可以取消选择。每次启动选择一条消息。切换聊天或等待一分钟后，选择模式会退出。
+
+扩展使用 Chrome 的 `activeTab` 和 `scripting` 权限，在工具栏按钮被点击时进入当前的 Discord 标签页。扩展在本地查找页面上的消息菜单，不需要账户令牌或外部服务。
