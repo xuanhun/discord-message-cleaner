@@ -1,11 +1,32 @@
 {
   "manifest_version": 3,
-  "name": "Discord 消息清理",
-  "version": "0.4.0",
-  "description": "按发送者、日期和内容筛选 Discord 消息，预览后一次确认批量删除。",
-  "permissions": ["activeTab", "scripting"],
+  "name": "__MSG_extensionName__",
+  "version": "0.5.0",
+  "default_locale": "en",
+  "description": "__MSG_extensionDescription__",
+  "homepage_url": "https://github.com/xuanhun/discord-message-cleaner",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "action": {
-    "default_title": "Discord 消息清理",
+    "default_title": "__MSG_extensionName__",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    },
     "default_popup": "popup.html"
-  }
+  },
+  "content_scripts": [{
+    "matches": ["https://discord.com/*"],
+    "css": ["picker.css"],
+    "js": ["messages.js", "history.js", "picker.js", "launcher.js"],
+    "run_at": "document_idle"
+  }],
+  "web_accessible_resources": [{
+    "resources": ["icons/icon-48.png"],
+    "matches": ["https://discord.com/*"]
+  }]
 }

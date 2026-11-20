@@ -24,7 +24,7 @@
   flex-direction: column;
   inset: 60px 20px auto auto;
   width: min(446px, calc(100vw - 40px));
-  max-height: calc(100dvh - 80px);
+  max-height: calc(100dvh - 205px);
   border-top: 3px solid var(--dmc-accent);
   overflow: hidden;
 }
@@ -41,8 +41,47 @@
 }
 
 #discord-message-cleaner-picker [hidden],
-#discord-message-cleaner-picker[hidden] {
+#discord-message-cleaner-picker[hidden],
+#discord-message-cleaner-picker[data-collapsed] {
   display: none !important;
+}
+
+#discord-message-cleaner-launcher {
+  position: fixed;
+  inset: auto 18px 84px auto;
+  z-index: 2147483646;
+  width: 49px;
+  height: 49px;
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  border: 1px solid #a9beff;
+  border-radius: 15px;
+  background: #2444aa;
+  box-shadow: 0 5px 22px #111e4a5c;
+  cursor: pointer;
+}
+
+#discord-message-cleaner-launcher img {
+  width: 43px;
+  height: 43px;
+  pointer-events: none;
+}
+
+#discord-message-cleaner-launcher:hover,
+#discord-message-cleaner-launcher[aria-expanded="true"] {
+  border-color: #a6f6ef;
+  box-shadow: 0 0 0 2px #a6f6ef66, 0 5px 22px #111e4a5c;
+}
+
+#discord-message-cleaner-launcher:focus-visible {
+  outline: 2px solid #85a8ff;
+  outline-offset: 3px;
+}
+
+body:has([role="dialog"]:not([aria-hidden="true"])) #discord-message-cleaner-launcher,
+body:has([role="alertdialog"]:not([aria-hidden="true"])) #discord-message-cleaner-launcher {
+  visibility: hidden;
 }
 
 #discord-message-cleaner-picker h2,
@@ -345,7 +384,17 @@
   #discord-message-cleaner-picker {
     inset: 52px 10px auto auto;
     width: calc(100vw - 20px);
-    max-height: calc(100dvh - 64px);
+    max-height: calc(100dvh - 196px);
+  }
+}
+
+@media (max-height: 620px) {
+  #discord-message-cleaner-launcher {
+    bottom: 14px;
+  }
+
+  #discord-message-cleaner-picker {
+    max-height: calc(100dvh - 134px);
   }
 }
 

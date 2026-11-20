@@ -1,0 +1,14 @@
+Name: Discord Message Cleaner
+Short description: Filter Discord messages in a floating panel, review your selection, and confirm once to delete the batch.
+
+Description
+Open a channel, direct message, or group chat on Discord's website. The floating button appears automatically. Select it to expand or collapse the cleaner.
+
+• Scan chat history and filter by sender, date, text, regular expression, or attachment type.
+• Review matching messages and choose what to delete.
+• Confirm a selected batch once, stop the queue when needed, and see what completed or was skipped.
+
+The cleanup panel is currently in Simplified Chinese. The extension processes chat data locally for the cleanup workflow. Discord controls deletion permissions. This independent extension uses Discord's web interface. Discord's rules on account automation apply.
+
+GitHub: https://github.com/xuanhun/discord-message-cleaner
+Publisher: https://github.com/xuanhun

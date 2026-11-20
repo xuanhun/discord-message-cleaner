@@ -7,7 +7,7 @@ Chrome Manifest V3 扩展。通过 Discord 网页的滚动区扫描聊天历史�
 1. 克隆本仓库，或通过 GitHub 的 **Code → Download ZIP** 下载并解压。
 2. 在 Chrome 打开 chrome://extensions/，开启 **开发者模式**。
 3. 点击 **加载已解压的扩展程序**，选择包含 manifest.json 的目录。有旧版时用新版文件替换原目录里的文件，然后在扩展页重新加载。
-4. 切换到 Discord 网页版的文字频道或私信，在 Chrome 工具栏点击 **Discord 消息清理**。在扩展管理页等其他页面点击图标时，弹窗会提示切换，也可点 **打开 Discord 网页**。
+4. 打开或刷新 Discord 网页版。右侧会自动出现清理图标。点击它展开或收起面板，也可通过 Chrome 工具栏打开。
 
 ## 筛选与删除
 
@@ -23,6 +23,10 @@ Discord 会在处理时判断删除权限。服务器中，删除他人消息需
 
 扩展通过 Discord 网页的滚动区读取历史，不调用账户 API。面板会提示是否读到聊天开头。若 Discord 暂停加载或当前滚动区无法识别，可再次扫描，或手动滚动后点 **刷新已加载**。处理队列中已移出视口的消息时，扩展会尝试在历史中定位该条消息。
 
-扩展使用 activeTab 和 scripting 权限。筛选与队列仅保存在当前页面内存，刷新或关闭面板会清空队列。
+扩展仅在 Discord 网页中运行。筛选与队列保存在当前标签页的内存中，收起面板后仍可继续使用。刷新或关闭标签页会清空这些数据。
+
+## Chrome 网上应用店
+
+商店目录包含[英文描述](store/en.txt)、[简体中文描述](store/zh-CN.txt)和[隐私政策](store/privacy.html)。
 
 批量模式通过个人账号的网页界面执行删除。Discord 禁止自动化普通账号，可能据此停用账号。 [Discord 账号自动化规则](https://support.discord.com/hc/en-us/articles/115002192352-Automated-User-Accounts-Self-Bots)

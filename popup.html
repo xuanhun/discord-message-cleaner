@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="zh-CN">
+<html>
 <head>
   <meta charset="utf-8">
-  <title>Discord 消息清理</title>
+  <title>Discord Message Cleaner</title>
   <style>
     :root {
       color-scheme: light dark;
@@ -32,9 +32,9 @@
   <script src="popup.js" defer></script>
 </head>
 <body>
-  <h1>Discord 消息清理</h1>
-  <p id="status" role="status">正在检查当前标签页…</p>
-  <button id="open-discord" type="button" hidden>打开 Discord 网页</button>
-  <button id="retry" type="button" hidden>重试</button>
+  <h1 data-message="extensionName"></h1>
+  <p id="status" role="status" data-message="checkingTab"></p>
+  <button id="open-discord" type="button" data-message="openDiscord" hidden></button>
+  <button id="retry" type="button" data-message="retry" hidden></button>
 </body>
 </html>

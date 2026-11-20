@@ -3,12 +3,18 @@ var discordMessageCleanerPage = (() => {
   const dialogSelector = '[role="dialog"], [role="alertdialog"]';
   const dmHomeSelector = '[data-list-item-id="guildsnav___home"]';
 
-  function chat() {
+  function route() {
     const parts = location.pathname.match(/^\/channels\/(@me|\d+)(?:\/(\d+)(?:\/\d+)?)?\/?$/);
     if (location.origin !== 'https://discord.com' || !parts || (parts[1] !== '@me' && !parts[2])) return null;
     const [, guild, id] = parts;
-    const title = id && document.querySelector('h1')?.textContent.trim();
-    return { guild, id, title: title || (id ? '当前聊天' : '私信 · 群聊') };
+    return { guild, id };
+  }
+
+  function chat() {
+    const current = route();
+    if (!current) return null;
+    const title = current.id && document.querySelector('h1')?.textContent.trim();
+    return { ...current, title: title || (current.id ? '当前聊天' : '私信 · 群聊') };
   }
 
   function getMessage(row, channel) {
@@ -232,7 +238,7 @@ var discordMessageCleanerPage = (() => {
   }
 
   return {
-    rowSelector, dmHomeSelector, chat, getMessage, readChat, senderChoices, filterMessages, dmEntries,
+    rowSelector, dmHomeSelector, route, chat, getMessage, readChat, senderChoices, filterMessages, dmEntries,
     waitFor, rowFor, hasChatRows, compareIds, openDelete, dismissMessageMenu,
   };
 })();

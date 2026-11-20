@@ -1,16 +1,21 @@
 const discordHome = 'https://discord.com/channels/@me';
-const discordChat = /^https:\/\/discord\.com\/channels\/(?:@me(?:\/\d+(?:\/\d+)?)?|\d+\/\d+(?:\/\d+)?)\/?(?:[?#]|$)/;
-const status = document.getElementById('status');
+const statusText = document.getElementById('status');
 const openDiscord = document.getElementById('open-discord');
 const retry = document.getElementById('retry');
+const message = (key) => chrome.i18n.getMessage(key);
+
+document.documentElement.lang = chrome.i18n.getUILanguage();
+document.title = message('extensionName');
+for (const element of document.querySelectorAll('[data-message]')) {
+  element.textContent = message(element.dataset.message);
+}
 
 openDiscord.addEventListener('click', async () => {
   try {
     await chrome.tabs.create({ url: discordHome });
     window.close();
-  } catch (error) {
-    console.warn('无法打开 Discord。', error);
-    status.textContent = '无法打开标签页。请在地址栏输入 discord.com，进入聊天后再点击扩展。';
+  } catch {
+    statusText.textContent = message('openTabFailed');
   }
 });
 retry.addEventListener('click', openPanel);
@@ -18,30 +23,23 @@ retry.addEventListener('click', openPanel);
 async function openPanel() {
   retry.hidden = true;
   openDiscord.hidden = true;
-  status.textContent = '正在检查当前标签页…';
+  statusText.textContent = message('checkingTab');
 
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab?.id === undefined || !discordChat.test(tab.url ?? '')) {
-      status.textContent = '请切换到 Discord 的文字频道或私信标签页，然后再点一次扩展图标。';
-      openDiscord.hidden = false;
-      return;
+    if (tab?.id !== undefined) {
+      const reply = await chrome.tabs.sendMessage(tab.id, { type: 'discord-message-cleaner:open' });
+      if (reply?.opened) {
+        window.close();
+        return;
+      }
     }
-
-    status.textContent = '正在打开清理面板…';
-    const target = { tabId: tab.id };
-    await chrome.scripting.insertCSS({ target, files: ['picker.css'] });
-    const [injection] = await chrome.scripting.executeScript({
-      target,
-      files: ['messages.js', 'history.js', 'picker.js'],
-    });
-    if (injection?.result !== true) throw new Error('The cleanup panel did not initialize.');
-    window.close();
-  } catch (error) {
-    console.warn('无法启动 Discord 消息清理。', error);
-    status.textContent = '没能打开清理面板。请刷新 Discord 页面，检查扩展的站点访问权限后重试。';
-    retry.hidden = false;
+  } catch {
+    // Tabs outside Discord, or tabs opened before installation, have no receiver.
   }
+  statusText.textContent = message('switchToDiscord');
+  openDiscord.hidden = false;
+  retry.hidden = false;
 }
 
 void openPanel();

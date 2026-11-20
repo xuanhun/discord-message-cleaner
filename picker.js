@@ -1,4 +1,4 @@
-(() => {
+function openDiscordMessageCleanerPanel(onVisibilityChange) {
   const page = discordMessageCleanerPage;
   const history = discordMessageCleanerHistory;
   if (!page.chat()) return false;
@@ -6,6 +6,7 @@
   const panelId = 'discord-message-cleaner-picker';
   const existingPanel = document.getElementById(panelId);
   if (existingPanel) {
+    existingPanel.removeAttribute('data-collapsed');
     if (!existingPanel.hidden) existingPanel.querySelector('[data-close]').focus();
     else document.getElementById('discord-message-cleaner-quick')?.click();
     return true;
@@ -17,7 +18,7 @@
   panel.innerHTML = `
     <header class="dmc-heading">
       <div><h2>消息清理</h2><p data-chat></p></div>
-      <button type="button" data-close aria-label="关闭清理面板">×</button>
+      <button type="button" data-close aria-label="收起清理面板" title="收起清理面板">−</button>
     </header>
     <div class="dmc-body">
       <form data-filters>
@@ -109,7 +110,11 @@
   let pendingBatch;
   let batchInProgress = false;
 
-  find('[data-close]').addEventListener('click', close);
+  find('[data-close]').addEventListener('click', () => {
+    if (pendingBatch) closeBatchReview();
+    panel.setAttribute('data-collapsed', '');
+    onVisibilityChange?.({ collapsed: true });
+  });
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     applyFilters();
@@ -203,6 +208,7 @@
     clearTimeout(filterTimer);
     stopQuickSelect();
     panel.remove();
+    onVisibilityChange?.();
   }
 
   function readCurrent() {
@@ -700,4 +706,4 @@
     event.stopImmediatePropagation();
     run((signal) => processMessage(message, signal));
   }
-})();
+}

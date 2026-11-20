@@ -1,0 +1,11 @@
+{
+  "extensionName": { "message": "Discord 消息清理" },
+  "extensionDescription": { "message": "用悬浮面板筛选 Discord 消息，核对选择后一次确认批量删除。" },
+  "openPanel": { "message": "展开 Discord 消息清理" },
+  "collapsePanel": { "message": "收起 Discord 消息清理" },
+  "checkingTab": { "message": "正在检查当前标签页…" },
+  "switchToDiscord": { "message": "请打开 Discord 的文字频道或私信。若已经打开 Discord，请刷新标签页再试。" },
+  "openDiscord": { "message": "打开 Discord 网页" },
+  "retry": { "message": "重试" },
+  "openTabFailed": { "message": "无法打开标签页。请在地址栏输入 discord.com，再进入文字频道或私信。" }
+}
