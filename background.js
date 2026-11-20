@@ -1,5 +1,5 @@
 const title = 'Discord 消息清理';
-const discordChat = /^https:\/\/discord\.com\/channels\/(?:@me|\d+)\/\d+(?:\/\d+)?\/?(?:[?#]|$)/;
+const discordChat = /^https:\/\/discord\.com\/channels\/(?:@me(?:\/\d+(?:\/\d+)?)?|\d+\/\d+(?:\/\d+)?)\/?(?:[?#]|$)/;
 
 chrome.action.onClicked.addListener(async (tab) => {
   if (tab.id === undefined) return;
@@ -10,7 +10,7 @@ chrome.action.onClicked.addListener(async (tab) => {
   if (discordChat.test(tab.url ?? '')) {
     try {
       await chrome.scripting.insertCSS({ target, files: ['picker.css'] });
-      await chrome.scripting.executeScript({ target, files: ['picker.js'] });
+      await chrome.scripting.executeScript({ target, files: ['messages.js', 'picker.js'] });
       hint = '';
     } catch (error) {
       console.warn('无法在当前 Discord 标签页启动消息选择。', error);

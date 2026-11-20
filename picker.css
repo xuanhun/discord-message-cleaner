@@ -1,39 +1,230 @@
-#discord-message-cleaner-picker {
+#discord-message-cleaner-picker,
+#discord-message-cleaner-quick {
   position: fixed;
-  inset: auto 20px 112px auto;
   z-index: 2147483647;
+  box-sizing: border-box;
+  border: 1px solid #c6dbd6;
+  border-radius: 16px;
+  color: #102d27;
+  background: #f5faf8;
+  box-shadow: 0 12px 38px #132c2a35;
+  font: 14px/1.5 system-ui, sans-serif;
+  color-scheme: light;
+}
+
+#discord-message-cleaner-picker {
+  inset: 58px 16px auto auto;
+  width: min(430px, calc(100vw - 32px));
+  max-height: calc(100dvh - 74px);
+  padding: 18px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+#discord-message-cleaner-picker *,
+#discord-message-cleaner-picker *::before {
+  box-sizing: border-box;
+}
+
+#discord-message-cleaner-picker [hidden],
+#discord-message-cleaner-picker[hidden] {
+  display: none !important;
+}
+
+#discord-message-cleaner-quick {
+  inset: auto 20px 112px auto;
+  max-width: calc(100vw - 40px);
+  padding: 12px 16px;
+  cursor: pointer;
+}
+
+#discord-message-cleaner-picker h2 {
+  margin: 0;
+  color: #102d27;
+  font-size: 22px;
+  font-weight: 720;
+}
+
+#discord-message-cleaner-picker p {
+  margin: 0;
+  color: #3c5c55;
+  overflow-wrap: anywhere;
+}
+
+#discord-message-cleaner-picker .dmc-heading,
+#discord-message-cleaner-picker .dmc-preview-heading,
+#discord-message-cleaner-picker .dmc-actions,
+#discord-message-cleaner-picker .dmc-pagination {
   display: flex;
   align-items: center;
-  gap: 14px;
-  max-width: calc(100vw - 40px);
-  box-sizing: border-box;
-  padding: 12px 14px;
-  border: 1px solid #486564;
-  border-radius: 12px;
-  background: #172423;
-  color: #f1fbf8;
-  box-shadow: 0 8px 26px #0005;
-  font: 14px/1.5 system-ui, sans-serif;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#discord-message-cleaner-picker .dmc-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+#discord-message-cleaner-picker form {
+  margin-top: 15px;
+}
+
+#discord-message-cleaner-picker fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+#discord-message-cleaner-picker .dmc-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+#discord-message-cleaner-picker label {
+  display: block;
+  color: #25443e;
+  font-weight: 600;
+}
+
+#discord-message-cleaner-picker input:not([type="checkbox"]),
+#discord-message-cleaner-picker select {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  margin: 3px 0 0;
+  padding: 4px 8px;
+  border: 1px solid #9ab7ae;
+  border-radius: 6px;
+  color: #102d27;
+  background: #fff;
+  font: inherit;
+  font-weight: 400;
+}
+
+#discord-message-cleaner-picker input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #006b57;
+  appearance: auto;
+  flex: none;
+}
+
+#discord-message-cleaner-picker details {
+  padding: 8px 0 10px;
+}
+
+#discord-message-cleaner-picker summary {
+  color: #0a6353;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+#discord-message-cleaner-picker details > label,
+#discord-message-cleaner-picker details > .dmc-grid {
+  margin-top: 8px;
+}
+
+#discord-message-cleaner-picker .dmc-check,
+#discord-message-cleaner-picker li label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
 }
 
 #discord-message-cleaner-picker button {
-  flex: none;
-  padding: 5px 10px;
-  border: 1px solid #6e8c88;
+  min-height: 31px;
+  padding: 4px 8px;
+  border: 1px solid #9ab7ae;
   border-radius: 6px;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
+  color: #163f36;
+  background: #fff;
   font: inherit;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-#discord-message-cleaner-picker button:focus-visible {
-  outline: 2px solid #72e4ca;
+#discord-message-cleaner-picker button:not(:disabled):hover {
+  background: #e6f1ed;
+}
+
+#discord-message-cleaner-picker button.dmc-primary {
+  border-color: #006b57;
+  color: #fff;
+  background: #006b57;
+}
+
+#discord-message-cleaner-picker button.dmc-primary:not(:disabled):hover {
+  background: #07503f;
+}
+
+#discord-message-cleaner-picker button:disabled {
+  cursor: default;
+  opacity: .55;
+}
+
+#discord-message-cleaner-picker :focus-visible,
+#discord-message-cleaner-quick:focus-visible {
+  outline: 2px solid #0b7a64;
   outline-offset: 2px;
+}
+
+#discord-message-cleaner-picker .dmc-preview {
+  padding-top: 10px;
+  margin-top: 10px;
+  border-top: 1px solid #c6dbd6;
+}
+
+#discord-message-cleaner-picker ul {
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+}
+
+#discord-message-cleaner-picker li {
+  border-bottom: 1px solid #dce9e5;
+}
+
+#discord-message-cleaner-picker li label,
+#discord-message-cleaner-picker .dmc-empty {
+  padding: 6px 3px;
+}
+
+#discord-message-cleaner-picker li label > span {
+  display: block;
+  min-width: 0;
+}
+
+#discord-message-cleaner-picker .dmc-meta,
+#discord-message-cleaner-picker .dmc-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#discord-message-cleaner-picker .dmc-meta,
+#discord-message-cleaner-picker .dmc-status,
+#discord-message-cleaner-picker .dmc-empty {
+  color: #3c5c55;
+  font-size: 12px;
+}
+
+#discord-message-cleaner-picker .dmc-text {
+  font-weight: 400;
+}
+
+#discord-message-cleaner-picker .dmc-status {
+  min-height: 2em;
+  padding: 4px 0 8px;
 }
 
 html[data-discord-message-cleaner] li[id^="chat-messages-"]:has([role="article"]):hover {
   cursor: crosshair;
-  outline: 2px solid #72e4ca;
+  outline: 2px solid #18ae89;
   outline-offset: -2px;
 }
