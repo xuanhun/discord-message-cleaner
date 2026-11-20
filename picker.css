@@ -125,6 +125,10 @@
   gap: 8px;
 }
 
+#discord-message-cleaner-picker .dmc-manual-author {
+  margin-top: 8px;
+}
+
 #discord-message-cleaner-picker label {
   display: block;
   color: var(--dmc-ink);

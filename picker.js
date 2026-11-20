@@ -24,9 +24,9 @@
         <fieldset>
           <div class="dmc-grid">
             <label>聊天范围<select name="scope"><option value="current">当前聊天</option><option value="dm">私信和群聊</option></select></label>
-            <label>发送者<input name="author" list="dmc-authors" placeholder="所有发送者"></label>
+            <label>发送者<select name="sender"><option value="">所有发送者</option><option value="manual">手动输入…</option></select></label>
           </div>
-          <datalist id="dmc-authors"></datalist>
+          <label class="dmc-manual-author" hidden>发送者显示名或用户 ID<input name="author" autocomplete="off" placeholder="输入完整显示名或用户 ID"></label>
           <details>
             <summary>高级筛选</summary>
             <label>消息内容<input name="query" maxlength="200" placeholder="输入关键词或正则表达式"></label>
@@ -92,6 +92,7 @@
   let filterTimer;
   let appliedFiltersKey;
   let appliedChannelId;
+  let authorChoicesKey;
 
   find('[data-close]').addEventListener('click', close);
   form.addEventListener('submit', (event) => {
@@ -204,9 +205,11 @@
   }
 
   function readFilters() {
+    const sender = fields.sender.value;
     return {
       scope: fields.scope.value,
-      author: fields.author.value,
+      author: sender === 'manual' ? fields.author.value : sender.slice(sender.indexOf(':') + 1),
+      authorMode: sender.split(':', 1)[0],
       query: fields.query.value,
       regex: fields.regex.checked,
       from: fields.from.value,
@@ -217,6 +220,7 @@
   }
 
   function scheduleFilters() {
+    find('.dmc-manual-author').hidden = fields.sender.value !== 'manual';
     if (!filterTimer && JSON.stringify(readFilters()) === appliedFiltersKey) return;
     const firstChange = !filterTimer;
     selected.clear();
@@ -249,17 +253,7 @@
       scope === 'dm' ? message.guild === '@me' : message.channelId === conversation?.id,
     );
 
-    const authors = new Map();
-    for (const message of pool) {
-      if (message.author) authors.set(message.author, message.author);
-      if (message.authorId) authors.set(message.authorId, message.author || message.authorId);
-    }
-    find('#dmc-authors').replaceChildren(...Array.from(authors, ([value, label]) => {
-      const option = document.createElement('option');
-      option.value = value;
-      if (value !== label) option.label = label;
-      return option;
-    }));
+    updateAuthorChoices(pool);
 
     try {
       matches = page.filterMessages(pool, filters);
@@ -275,6 +269,25 @@
     pageIndex = 0;
     updateChatLabel();
     render();
+  }
+
+  function updateAuthorChoices(pool) {
+    const control = fields.sender;
+    const selectedValue = control.value;
+    const choices = page.senderChoices(pool);
+    if (selectedValue && selectedValue !== 'manual' && !choices.some(({ value }) => value === selectedValue)) {
+      const label = control.selectedOptions[0].textContent.replace(/（当前无匹配）$/, '');
+      choices.push({ value: selectedValue, label: label + '（当前无匹配）' });
+    }
+    const key = JSON.stringify(choices);
+    if (key === authorChoicesKey) return;
+    authorChoicesKey = key;
+    control.replaceChildren(
+      new Option('所有发送者', ''),
+      ...choices.map(({ value, label }) => new Option(label, value)),
+      new Option('手动输入…', 'manual'),
+    );
+    control.value = selectedValue;
   }
 
   function render() {

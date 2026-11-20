@@ -40,9 +40,33 @@ var discordMessageCleanerPage = (() => {
     return Array.from(document.querySelectorAll(rowSelector), (row) => getMessage(row, channel)).filter(Boolean);
   }
 
-  function filterMessages(messages, { author, query, regex, from, to, type, order }) {
-    const normalize = (value) => value.trim().replace(/^@/, '').toLocaleLowerCase();
-    const sender = normalize(author);
+  function normalizeSender(value) {
+    return value.trim().replace(/^@/, '').toLocaleLowerCase();
+  }
+
+  function senderChoices(messages) {
+    const choices = new Map();
+    for (const { author, authorId } of messages) {
+      if (!author && !authorId) continue;
+      const value = authorId ? 'id:' + authorId : 'name:' + author;
+      const previous = choices.get(value);
+      choices.set(value, { value, label: author || previous?.label || authorId, authorId });
+    }
+
+    const countByName = new Map();
+    for (const { label } of choices.values()) {
+      const name = normalizeSender(label);
+      countByName.set(name, (countByName.get(name) ?? 0) + 1);
+    }
+    return [...choices.values()].map(({ value, label, authorId }) => {
+      if (countByName.get(normalizeSender(label)) === 1) return { value, label };
+      const suffix = authorId ? 'ID ' + authorId : '按显示名';
+      return { value, label: label + ' · ' + suffix };
+    }).sort((a, b) => a.label.localeCompare(b.label, 'zh-CN'));
+  }
+
+  function filterMessages(messages, { author, authorMode, query, regex, from, to, type, order }) {
+    const sender = normalizeSender(author);
     const literal = query.toLocaleLowerCase();
     const pattern = regex && query ? new RegExp(query, 'iu') : null;
     const lower = from ? new Date(`${from}T00:00:00`).getTime() : -Infinity;
@@ -52,7 +76,11 @@ var discordMessageCleanerPage = (() => {
     if (lower >= upper) throw new Error('开始日期必须早于或等于结束日期。');
 
     return messages.filter((message) => {
-      if (sender && normalize(message.author) !== sender && message.authorId !== sender) return false;
+      if (sender) {
+        const byId = authorMode !== 'name' && message.authorId === sender;
+        const byName = authorMode !== 'id' && normalizeSender(message.author) === sender;
+        if (!byId && !byName) return false;
+      }
       if (pattern ? !pattern.test(message.text) : !message.text.toLocaleLowerCase().includes(literal)) return false;
       if ((from || to) && !(message.timestamp >= lower && message.timestamp < upper)) return false;
       if (type === 'media') return message.media;
@@ -165,7 +193,7 @@ var discordMessageCleanerPage = (() => {
   }
 
   return {
-    rowSelector, dmHomeSelector, chat, getMessage, readChat, filterMessages, dmEntries,
+    rowSelector, dmHomeSelector, chat, getMessage, readChat, senderChoices, filterMessages, dmEntries,
     waitFor, rowFor, compareIds, openDelete,
   };
 })();
