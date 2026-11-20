@@ -1,13 +1,13 @@
 (() => {
   const page = discordMessageCleanerPage;
-  if (!page.chat()) return;
+  if (!page.chat()) return false;
 
   const panelId = 'discord-message-cleaner-picker';
   const existingPanel = document.getElementById(panelId);
   if (existingPanel) {
-    if (!existingPanel.hidden) existingPanel.querySelector('[data-close]').click();
+    if (!existingPanel.hidden) existingPanel.querySelector('[data-close]').focus();
     else document.getElementById('discord-message-cleaner-quick')?.click();
-    return;
+    return true;
   }
 
   const panel = document.createElement('aside');
@@ -147,6 +147,7 @@
   readCurrent();
   applyFilters();
   find('[data-close]').focus();
+  return true;
 
   function close() {
     lifetime.abort();

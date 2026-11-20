@@ -7,7 +7,7 @@ Chrome Manifest V3 扩展。筛选 Discord 网页版中已加载的消息，预�
 1. 克隆本仓库，或通过 GitHub 的 **Code → Download ZIP** 下载并解压。
 2. 在 Chrome 打开 chrome://extensions/，开启 **开发者模式**。
 3. 点击 **加载已解压的扩展程序**，选择包含 manifest.json 的目录。有旧版时用新版文件替换原目录里的文件，然后在扩展页重新加载。
-4. 打开或刷新 Discord 网页，在 Chrome 工具栏点击 **Discord 消息清理**。
+4. 切换到 Discord 网页版的文字频道或私信，在 Chrome 工具栏点击 **Discord 消息清理**。在扩展管理页等其他页面点击图标时，弹窗会提示切换，也可点 **打开 Discord 网页**。
 
 ## 筛选与删除
 

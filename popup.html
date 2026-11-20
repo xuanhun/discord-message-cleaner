@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>Discord 消息清理</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font: 14px/1.5 system-ui, sans-serif;
+    }
+    body {
+      width: 270px;
+      margin: 0;
+      padding: 16px;
+      background: Canvas;
+      color: CanvasText;
+    }
+    h1 { margin: 0 0 8px; font-size: 17px; }
+    p { margin: 0 0 12px; }
+    button {
+      min-height: 34px;
+      padding: 5px 10px;
+      border: 1px solid #006b57;
+      border-radius: 6px;
+      background: #006b57;
+      color: #fff;
+      font: inherit;
+      cursor: pointer;
+    }
+    button:focus-visible { outline: 2px solid #18ae89; outline-offset: 3px; }
+  </style>
+  <script src="popup.js" defer></script>
+</head>
+<body>
+  <h1>Discord 消息清理</h1>
+  <p id="status" role="status">正在检查当前标签页…</p>
+  <button id="open-discord" type="button" hidden>打开 Discord 网页</button>
+  <button id="retry" type="button" hidden>重试</button>
+</body>
+</html>

@@ -1,13 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Discord 消息清理",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "按发送者、日期和内容筛选 Discord 消息，预览后逐条确认删除。",
   "permissions": ["activeTab", "scripting"],
-  "background": {
-    "service_worker": "background.js"
-  },
   "action": {
-    "default_title": "Discord 消息清理"
+    "default_title": "Discord 消息清理",
+    "default_popup": "popup.html"
   }
 }
