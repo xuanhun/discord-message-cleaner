@@ -117,8 +117,17 @@ var discordMessageCleanerPage = (() => {
     return document.getElementById(`chat-messages-${message.channelId}-${message.id}`);
   }
 
+  function hasChatRows(channelId) {
+    return Boolean(document.querySelector(`li[id^="chat-messages-${channelId}-"] [role="article"]`));
+  }
+
   function compareIds(a, b) {
     return a.length - b.length || a.localeCompare(b);
+  }
+
+  function isDeleteButton(button) {
+    return /^(删除|刪除|Delete)$/i.test(button.textContent.trim()) ||
+      [...button.classList].some((name) => name.startsWith('critical-primary_'));
   }
 
   async function waitForDismissal(dialog, message, signal) {
@@ -128,7 +137,7 @@ var discordMessageCleanerPage = (() => {
       if (!button) return;
       const classes = [...button.classList];
       const label = button.textContent.trim();
-      if (/^(删除|Delete)$/i.test(label) || classes.some((name) => name.startsWith('critical-primary_'))) {
+      if (isDeleteButton(button)) {
         intent = 'confirm';
       } else if (/^(取消|Cancel)$/i.test(label) || classes.some((name) => /^(secondary|icon-only)_/.test(name))) {
         intent = 'cancel';
@@ -152,7 +161,36 @@ var discordMessageCleanerPage = (() => {
     return removed ? 'removed' : 'unchanged';
   }
 
-  async function openDelete(message, signal) {
+  async function confirmNativeDelete(dialog, message, signal) {
+    if (signal.aborted || chat()?.id !== message.channelId) return 'interrupted';
+    // Discord's preview uses the same ID as the original message. Text can be duplicated.
+    const target = dialog.querySelector(`[id="message-content-${message.id}"], [id="message-accessories-${message.id}"]`);
+    const buttons = [...dialog.querySelectorAll('button')].filter((button) =>
+      !button.disabled && button.getAttribute('aria-disabled') !== 'true' &&
+      button.getClientRects().length && isDeleteButton(button),
+    );
+    if (!target || buttons.length !== 1) return 'unverified';
+
+    buttons[0].click();
+    // A stop request prevents new deletions. Observe this already-dispatched action for the summary.
+    const observed = await waitFor(() => {
+      if (chat()?.id !== message.channelId) return 'wrong-chat';
+      if (!dialog.isConnected && !rowFor(message)) return 'removed';
+    }, new AbortController().signal, 3500);
+    return observed || 'unchanged';
+  }
+
+  async function dismissMessageMenu(signal) {
+    const find = () => document.querySelector('#message[role="menu"]');
+    const menu = find();
+    if (!menu) return true;
+    menu.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Escape', code: 'Escape', bubbles: true, cancelable: true,
+    }));
+    return Boolean(await waitFor(() => !find(), signal, 700));
+  }
+
+  async function openDelete(message, signal, { automatic = false } = {}) {
     if (signal.aborted) return 'interrupted';
     if (chat()?.id !== message.channelId) return 'wrong-chat';
     if (document.querySelector(`#message[role="menu"], ${dialogSelector}`)) return 'busy';
@@ -185,15 +223,16 @@ var discordMessageCleanerPage = (() => {
       return 'unavailable';
     }
 
-    // This opens Discord's confirmation. The extension does not click its final button.
     action.click();
     const dialog = await waitFor(() => document.querySelector(dialogSelector), signal, 1500);
-    if (!dialog) return rowFor(message) ? 'dialog-missing' : 'removed';
+    if (signal.aborted) return 'interrupted';
+    if (!dialog) return automatic || rowFor(message) ? 'dialog-missing' : 'removed';
+    if (automatic) return confirmNativeDelete(dialog, message, signal);
     return waitForDismissal(dialog, message, signal);
   }
 
   return {
     rowSelector, dmHomeSelector, chat, getMessage, readChat, senderChoices, filterMessages, dmEntries,
-    waitFor, rowFor, compareIds, openDelete,
+    waitFor, rowFor, hasChatRows, compareIds, openDelete, dismissMessageMenu,
   };
 })();
