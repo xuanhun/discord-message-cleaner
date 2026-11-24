@@ -14,11 +14,11 @@
 2. 点击 **添加至 Chrome**，在浏览器提示中选择 **添加扩展程序**。
 3. 打开或刷新 [Discord 网页版](https://discord.com/channels/@me)，进入一个文字频道、私信或群聊，然后点击右侧的悬浮按钮。也可从 Chrome 工具栏打开清理面板。
 
-商店版公开发布后可安装。如果页面暂时没有「添加至 Chrome」按钮，可以从源码安装。[Chrome 官方扩展安装帮助](https://support.google.com/chrome/answer/2664769?hl=zh-Hans)
+商店版已公开发布。如果无法从商店安装，也可加载 [商店版源码](https://github.com/xuanhun/discord-message-cleaner/tree/chrome-web-store)。[Chrome 官方扩展安装帮助](https://support.google.com/chrome/answer/2664769?hl=zh-Hans)
 
 #### 从 GitHub 源码安装或更新
 
-1. 克隆仓库，或在 GitHub 上选择 **Code → Download ZIP** 并解压。
+1. 打开 [本地批量版源码](https://github.com/xuanhun/discord-message-cleaner/tree/main)，在 GitHub 上选择 **Code → Download ZIP** 并解压。加载本地版前，在 Chrome 的扩展程序页暂停已安装的商店版，避免重复加载面板。
 2. 在 Chrome 地址栏输入 `chrome://extensions/`，开启 **开发者模式**。
 3. 点击 **加载已解压的扩展程序**，选择包含 `manifest.json` 的目录。
 4. 打开或刷新 Discord 网页版，点击右侧悬浮按钮。更新时，下载最新源码并替换原目录文件，然后在扩展程序管理页点击 **重新加载**，再刷新 Discord。
@@ -32,10 +32,10 @@
 
    | 版本 | 删除方式 |
    | --- | --- |
-   | Chrome 网上应用店版 | 点击 **打开删除确认**，在 Discord 的原生对话框中确认当前这条消息。处理下一条时，重复此操作。 |
-   | GitHub 源码版 | 点击 **处理下一条** 可逐条确认。也可点击 **批量删除**，核对会话和消息数后确认一次。面板会显示已删除、跳过和未完成的数量。点击 **停止** 或按 `Esc` 可中止后续操作，已发出的删除仍可能完成。 |
+   | Chrome 网上应用店版（v0.5.1） | 单选后点击 **打开删除确认**。多选后点击 **逐条确认剩余 N 条**。每次在 Discord 原生对话框确认后，扩展会打开下一条的确认框。 |
+   | GitHub 本地批量版（v0.5.2） | 单选时点击 **打开删除确认**。多选时点击 **批量删除 N 条**，核对会话和数量后确认一次。扩展会依次点击 Discord 的删除按钮。点击 **停止** 或按 `Esc` 可中止后续操作，已发出的删除仍可能完成。 |
 
-服务器中删除他人消息需要 Discord 的 **管理消息** 权限。源码版批量处理会跳过没有删除选项的消息，遇到无法核对的对话框或无法检测到删除结果时会暂停并保留剩余队列。Discord 禁止自动化普通账号，违规可能导致账号停用。[Discord 账号自动化规则](https://support.discord.com/hc/en-us/articles/115002192352-Automated-User-Accounts-Self-Bots)
+服务器中删除他人消息需要 Discord 的 **管理消息** 权限。本地批量版遇到没有删除选项、无法核对对话框或无法检测到删除结果时会暂停，保留尚未处理的选择。Discord 禁止自动化普通账号，违规可能导致账号停用。[Discord 账号自动化规则](https://support.discord.com/hc/en-us/articles/115002192352-Automated-User-Accounts-Self-Bots)
 
 面板会提示扫描是否到达聊天开头。如果 Discord 暂停加载，可重新扫描，或手动滚动后点击 **刷新已加载**。扩展通过 Discord 网页读取历史，并尝试为移出视口的队列消息定位原来的位置。
 
@@ -58,11 +58,11 @@ A Chrome extension for Discord on the web. Open a text channel, direct message, 
 2. Select **Add to Chrome**, then choose **Add extension** in the Chrome prompt.
 3. Open or refresh [Discord on the web](https://discord.com/channels/@me), enter a text channel, direct message, or group chat, and select the floating button on the right. You can also open the cleaner from the Chrome toolbar.
 
-The store edition is available for installation once the listing is public. If **Add to Chrome** is unavailable, you can install from source. [Chrome's extension installation help](https://support.google.com/chrome/answer/2664769?hl=en)
+The store edition is publicly available. If **Add to Chrome** is unavailable, you can load the [store edition from source](https://github.com/xuanhun/discord-message-cleaner/tree/chrome-web-store). [Chrome's extension installation help](https://support.google.com/chrome/answer/2664769?hl=en)
 
 #### Install or update from GitHub source
 
-1. Clone the repository or choose **Code → Download ZIP** on GitHub and extract the archive.
+1. Open the [local batch edition source](https://github.com/xuanhun/discord-message-cleaner/tree/main), choose **Code → Download ZIP**, and extract the archive. If the store edition is installed, disable it on Chrome’s Extensions page before loading the local edition so that only one panel runs.
 2. Open `chrome://extensions/` in Chrome and turn on **Developer mode**.
 3. Select **Load unpacked**, then select the directory containing `manifest.json`.
 4. Open or refresh Discord on the web and select the floating button on the right. To update, replace the files in the original directory with the latest source, select **Reload** on the Extensions page, then refresh Discord.
@@ -76,10 +76,10 @@ The store edition is available for installation once the listing is public. If *
 
    | Edition | How to delete |
    | --- | --- |
-   | Chrome Web Store | Select **Open delete confirmation** (打开删除确认), then confirm the current message in Discord's own dialog. Repeat for each message you want to delete. |
-   | GitHub source | Choose **Process next** (处理下一条) to confirm messages individually. To use the batch option, choose **Batch delete** (批量删除), review the chat scope and count, and confirm once. The panel lists deleted, skipped, and unfinished messages. Select **Stop** (停止) or press `Esc` to stop subsequent actions. A deletion already sent may still complete. |
+   | Chrome Web Store (v0.5.1) | Select one message and choose **Open delete confirmation** (打开删除确认), or select several and choose **Confirm remaining messages one by one** (逐条确认剩余 N 条). After each confirmation in Discord's dialog, the extension opens the next one. |
+   | GitHub local batch edition (v0.5.2) | For one message, choose **Open delete confirmation** (打开删除确认). For multiple messages, choose **Batch delete N messages** (批量删除 N 条), review the chat scope and count, and confirm once. The extension clicks Discord's delete buttons in sequence. Select **Stop** (停止) or press `Esc` to stop subsequent actions. A deletion already sent may still complete. |
 
-Deleting someone else's message in a server requires Discord's **Manage Messages** permission. The source edition skips messages without a delete option and pauses the batch if it cannot verify a dialog or observe the deletion result. The remaining messages stay in the queue. Discord prohibits automating ordinary user accounts and may terminate accounts for violations. [Discord's account automation rules](https://support.discord.com/hc/en-us/articles/115002192352-Automated-User-Accounts-Self-Bots)
+Deleting someone else's message in a server requires Discord's **Manage Messages** permission. The local batch edition pauses if the delete option is unavailable, it cannot verify the dialog, or it cannot observe the deletion result. Unprocessed messages remain selected. Discord prohibits automating ordinary user accounts and may terminate accounts for violations. [Discord's account automation rules](https://support.discord.com/hc/en-us/articles/115002192352-Automated-User-Accounts-Self-Bots)
 
 The panel indicates whether a scan reached the start of the conversation. If Discord pauses loading, try scanning again or scroll manually and choose **Refresh loaded messages** (刷新已加载). The extension reads history from the Discord web page and tries to locate queued messages that have scrolled out of view.
 

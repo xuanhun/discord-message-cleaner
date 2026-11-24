@@ -6,9 +6,7 @@ function openDiscordMessageCleanerPanel(onVisibilityChange) {
   const panelId = 'discord-message-cleaner-picker';
   const existingPanel = document.getElementById(panelId);
   if (existingPanel) {
-    existingPanel.removeAttribute('data-collapsed');
-    if (!existingPanel.hidden) existingPanel.querySelector('[data-close]').focus();
-    else document.getElementById('discord-message-cleaner-quick')?.click();
+    existingPanel.dispatchEvent(new Event('dmc:reopen'));
     return true;
   }
 
@@ -55,22 +53,12 @@ function openDiscordMessageCleanerPanel(onVisibilityChange) {
     </div>
     <footer class="dmc-footer">
       <p class="dmc-status" data-status role="status"></p>
-      <div class="dmc-actions" data-queue-actions>
+      <div class="dmc-actions">
         <button type="button" data-quick>快速点选</button>
         <button type="button" data-stop hidden>停止</button>
         <button type="button" data-skip disabled>跳过本条</button>
-        <button type="button" data-process>处理下一条</button>
-        <button type="button" data-batch class="dmc-primary">批量删除</button>
+        <button type="button" data-process class="dmc-primary">打开删除确认</button>
       </div>
-      <section data-batch-review aria-labelledby="dmc-batch-title" hidden>
-        <h3 id="dmc-batch-title">确认批量删除</h3>
-        <p data-batch-scope></p>
-        <p>只处理当前勾选的消息。删除后无法在 Discord 中恢复。</p>
-        <div class="dmc-actions">
-          <button type="button" data-batch-cancel>返回</button>
-          <button type="button" data-batch-confirm class="dmc-destructive">确认删除</button>
-        </div>
-      </section>
     </footer>
   `;
   document.body.append(panel);
@@ -87,13 +75,11 @@ function openDiscordMessageCleanerPanel(onVisibilityChange) {
   const dmButton = find('[data-dm]');
   const quickButton = find('[data-quick]');
   const stopButton = find('[data-stop]');
-  const batchButton = find('[data-batch]');
-  const batchConfirm = find('[data-batch-confirm]');
-  const batchCancel = find('[data-batch-cancel]');
   const selectAll = find('[data-select-all]');
   const dateFormat = new Intl.DateTimeFormat('zh-CN', { dateStyle: 'short', timeStyle: 'short' });
   const lifetime = new AbortController();
   const records = new Map();
+  const removedIds = new Set();
   const coverage = new Map();
   const selected = new Set();
   const pageSize = 12;
@@ -107,14 +93,17 @@ function openDiscordMessageCleanerPanel(onVisibilityChange) {
   let appliedFiltersKey;
   let appliedChannelId;
   let authorChoicesKey;
-  let pendingBatch;
-  let batchInProgress = false;
+  let collapseAfterCleanup = false;
 
-  find('[data-close]').addEventListener('click', () => {
-    if (pendingBatch) closeBatchReview();
-    panel.setAttribute('data-collapsed', '');
-    onVisibilityChange?.({ collapsed: true });
-  });
+  find('[data-close]').addEventListener('click', collapsePanel);
+  panel.addEventListener('dmc:reopen', reopenPanel);
+  document.addEventListener('pointermove', (event) => {
+    if (collapseAfterCleanup && !panel.contains(event.target) &&
+        !event.target.closest?.('#discord-message-cleaner-launcher')) collapsePanel();
+  }, { capture: true, signal: lifetime.signal });
+  document.addEventListener('pointerout', (event) => {
+    if (collapseAfterCleanup && event.relatedTarget === null) collapsePanel();
+  }, { capture: true, signal: lifetime.signal });
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     applyFilters();
@@ -122,8 +111,7 @@ function openDiscordMessageCleanerPanel(onVisibilityChange) {
   form.addEventListener('input', scheduleFilters);
   form.addEventListener('change', scheduleFilters);
   scanButton.addEventListener('click', () => {
-    readCurrent();
-    applyFilters();
+    refreshLoaded();
   });
   historyButton.addEventListener('click', () => {
     const conversation = page.chat();
@@ -131,16 +119,10 @@ function openDiscordMessageCleanerPanel(onVisibilityChange) {
   });
   dmButton.addEventListener('click', () => run(scanDirectMessages, true));
   stopButton.addEventListener('click', () => operation?.abort());
-  batchButton.addEventListener('click', reviewBatch);
-  batchConfirm.addEventListener('click', beginBatch);
-  batchCancel.addEventListener('click', () => {
-    closeBatchReview();
-    batchButton.focus();
-  });
   processButton.addEventListener('click', (event) => {
     if (event.shiftKey || !queueReady()) return;
-    const message = matches.find((candidate) => selected.has(candidate.id));
-    if (message) run((signal) => processMessage(message, signal), true);
+    const queue = matches.filter((candidate) => selected.has(candidate.id));
+    if (queue.length) run((signal) => processQueue(queue, signal), true);
   });
   skipButton.addEventListener('click', () => {
     if (!queueReady()) return;
@@ -179,9 +161,7 @@ function openDiscordMessageCleanerPanel(onVisibilityChange) {
       activeChat = next;
       stopQuickSelect();
       if (!busy) {
-        if (fields.scope.value === 'current') selected.clear();
-        readCurrent();
-        applyFilters();
+        refreshLoaded();
       }
     } else if (next.title !== activeChat.title) {
       activeChat = next;
@@ -190,15 +170,11 @@ function openDiscordMessageCleanerPanel(onVisibilityChange) {
   }, 250);
 
   document.addEventListener('keydown', (event) => {
-    if (batchInProgress && event.isTrusted && (event.key === 'Escape' || event.shiftKey)) operation?.abort();
     if (event.key !== 'Escape') return;
     if (quickStatus) stopQuickSelect();
-    if (pendingBatch) closeBatchReview();
   }, { capture: true, signal: lifetime.signal });
 
-  readCurrent();
-  applyFilters();
-  find('[data-close]').focus();
+  void reopenPanel();
   return true;
 
   function close() {
@@ -211,16 +187,55 @@ function openDiscordMessageCleanerPanel(onVisibilityChange) {
     onVisibilityChange?.();
   }
 
+  function collapsePanel() {
+    collapseAfterCleanup = false;
+    panel.setAttribute('data-collapsed', '');
+    onVisibilityChange?.({ focusLauncher: panel.contains(document.activeElement) });
+  }
+
+  async function reopenPanel() {
+    collapseAfterCleanup = false;
+    panel.removeAttribute('data-collapsed');
+    stopQuickSelect();
+    if (busy) return;
+    refreshLoaded();
+    find('[data-close]').focus();
+    const channelId = page.chat()?.id;
+    if (channelId && !page.hasChatRows(channelId)) {
+      const loaded = await page.waitFor(() => page.hasChatRows(channelId), lifetime.signal, 1800);
+      if (loaded && !busy && !panel.hasAttribute('data-collapsed') && page.chat()?.id === channelId) refreshLoaded();
+    }
+  }
+
+  function refreshLoaded(note) {
+    readCurrent();
+    applyFilters(note);
+  }
+
   function readCurrent() {
     const conversation = page.chat();
     if (!conversation?.id) return 0;
-    const messages = page.readChat(conversation);
+    const messages = page.readChat(conversation).filter(({ id }) => !removedIds.has(id));
+    // Discord virtualizes old messages. Prune gaps only inside the currently loaded range.
+    if (messages.length) {
+      const liveIds = new Set(messages.map(({ id }) => id));
+      const first = messages[0].id;
+      const last = messages[messages.length - 1].id;
+      for (const [id, record] of records) {
+        if (record.channelId === conversation.id && !liveIds.has(id) &&
+            page.compareIds(id, first) >= 0 && page.compareIds(id, last) <= 0) {
+          records.delete(id);
+          selected.delete(id);
+        }
+      }
+    }
     saveMessages(messages);
     return messages.length;
   }
 
   function saveMessages(messages) {
     for (const message of messages) {
+      if (removedIds.has(message.id)) continue;
       const prior = records.get(message.id);
       records.set(message.id, {
         ...message,
@@ -267,7 +282,7 @@ function openDiscordMessageCleanerPanel(onVisibilityChange) {
       (fields.scope.value === 'dm' || appliedChannelId === page.chat()?.id);
   }
 
-  function applyFilters(note = '每条消息均由 Discord 确认删除权限。') {
+  function applyFilters(note = '请在 Discord 的原生对话框中确认每条删除。') {
     clearTimeout(filterTimer);
     filterTimer = undefined;
     const conversation = page.chat();
@@ -354,57 +369,13 @@ function openDiscordMessageCleanerPanel(onVisibilityChange) {
   function renderQueue() {
     const available = queueReady();
     processButton.disabled = !available || !selected.size;
-    batchButton.disabled = processButton.disabled;
+    processButton.textContent = selected.size > 1 ? '逐条确认剩余 ' + selected.size + ' 条' : '打开删除确认';
     skipButton.disabled = processButton.disabled;
     selectAll.disabled = !available || !matches.length;
     selectAll.textContent = matches.length && selected.size === matches.length ? '清空选择' : '全选匹配';
     find('[data-count]').textContent = selected.size
       ? '匹配 ' + matches.length + ' 条 · 待处理 ' + selected.size + ' 条'
       : '匹配 ' + matches.length + ' 条';
-    if (pendingBatch && (!available || !sameSelection(pendingBatch))) closeBatchReview();
-  }
-
-  function sameSelection(batch) {
-    return selected.size === batch.messages.length &&
-      batch.messages.every((message) => selected.has(message.id));
-  }
-
-  function reviewBatch(event) {
-    if (!event.isTrusted || !queueReady()) return;
-    const messages = matches.filter((message) => selected.has(message.id));
-    if (!messages.length) return;
-    const rooms = new Set(messages.map((message) => message.channelId));
-    pendingBatch = { messages, scope: fields.scope.value, chatId: page.chat()?.id };
-    const description = rooms.size === 1 ? messages[0].channelTitle : rooms.size + ' 个会话';
-    find('[data-batch-scope]').textContent = description + ' · ' + messages.length + ' 条消息';
-    batchConfirm.textContent = '确认删除 ' + messages.length + ' 条';
-    find('[data-queue-actions]').hidden = true;
-    find('[data-batch-review]').hidden = false;
-    batchCancel.focus();
-  }
-
-  function closeBatchReview() {
-    pendingBatch = undefined;
-    find('[data-batch-review]').hidden = true;
-    find('[data-queue-actions]').hidden = false;
-  }
-
-  function beginBatch(event) {
-    if (!event.isTrusted || event.shiftKey || !pendingBatch) return;
-    const batch = pendingBatch;
-    closeBatchReview();
-    if (!queueReady() || !sameSelection(batch) || batch.chatId !== page.chat()?.id) {
-      status.textContent = '待处理范围已变化，请重新核对后确认。';
-      return;
-    }
-    run(async (signal) => {
-      batchInProgress = true;
-      try {
-        await processBatch(batch, signal);
-      } finally {
-        batchInProgress = false;
-      }
-    }, true);
   }
 
   function previewRow(message) {
@@ -438,6 +409,7 @@ function openDiscordMessageCleanerPanel(onVisibilityChange) {
 
   async function run(task, stoppable = false) {
     if (busy) return;
+    collapseAfterCleanup = false;
     stopQuickSelect();
     if (filterTimer) applyFilters();
     busy = true;
@@ -467,6 +439,7 @@ function openDiscordMessageCleanerPanel(onVisibilityChange) {
         } else {
           render();
         }
+        onVisibilityChange?.();
       }
     }
   }
@@ -484,25 +457,6 @@ function openDiscordMessageCleanerPanel(onVisibilityChange) {
     if (!entry) return false;
     entry.click();
     return await page.waitFor(() => page.chat()?.id === channelId, signal);
-  }
-
-  async function reopenChat(message, signal) {
-    if (signal.aborted || page.chat()?.id !== message.channelId) return;
-    const home = document.querySelector(page.dmHomeSelector);
-    if (!home) return;
-    home.click();
-    const leftChat = await page.waitFor(() => page.chat()?.guild === '@me' && !page.chat()?.id, signal, 1500);
-    if (!leftChat || signal.aborted) return;
-    if (message.guild === '@me') {
-      await visitDm(message.channelId, signal);
-      return;
-    }
-    const channelLink = () => document.querySelector(`a[href="/channels/${message.guild}/${message.channelId}"]`);
-    if (!channelLink()) document.querySelector(`[data-list-item-id="guildsnav___${message.guild}"]`)?.click();
-    await page.waitFor(() => page.chat()?.id === message.channelId || channelLink(), signal, 1500);
-    if (signal.aborted || page.chat()?.id === message.channelId) return;
-    channelLink()?.click();
-    await page.waitFor(() => page.chat()?.id === message.channelId, signal);
   }
 
   async function scanCurrentHistory(conversation, signal) {
@@ -573,23 +527,19 @@ function openDiscordMessageCleanerPanel(onVisibilityChange) {
     }
   }
 
-  async function prepareMessage(message, scope, signal, refill = false) {
+  async function prepareMessage(message, scope, signal) {
     if (page.chat()?.id !== message.channelId && scope === 'dm' && message.guild === '@me') {
       status.textContent = '正在打开该消息所在的私信…';
       await visitDm(message.channelId, signal);
     }
     if (page.chat()?.id === message.channelId && !page.rowFor(message)) {
       status.textContent = '正在聊天历史中定位选中的消息…';
-      if (refill && !page.hasChatRows(message.channelId)) {
-        // Discord can leave an empty rendered window after a whole page was deleted.
-        const loaded = await page.waitFor(() => page.hasChatRows(message.channelId), signal, 550);
-        if (!loaded) await reopenChat(message, signal);
-      }
       await history.locate(message, signal);
     }
   }
 
   function removeMessage(message) {
+    removedIds.add(message.id);
     records.delete(message.id);
     selected.delete(message.id);
     matches = matches.filter((candidate) => candidate.id !== message.id);
@@ -602,73 +552,33 @@ function openDiscordMessageCleanerPanel(onVisibilityChange) {
       'unloaded': '定位不到该消息，可滚动加载后重试。',
       'interrupted': '本次操作已中止。',
       'menu-missing': '无法打开原生消息菜单。',
-      'unavailable': 'Discord 没有提供删除选项，已跳过。菜单如仍打开，可按 Esc 关闭。',
+      'unavailable': 'Discord 没有提供删除选项。可以按 Esc 关闭菜单后跳过本条。',
       'dialog-missing': 'Discord 没有显示删除确认框。',
       'unverified': '无法核对确认框里的消息，请关闭 Discord 对话框后重试。',
-      'cancelled': '已取消，消息保留。可继续处理下一条。',
+      'cancelled': '已取消，当前条目仍在队列中。',
       'unchanged': '未观察到消息移除，当前条目仍留在队列中。',
     }[result];
   }
 
-  async function processMessage(message, signal) {
-    await prepareMessage(message, fields.scope.value, signal);
-    // Reveal the original message and give Discord's confirmation the full screen.
-    panel.hidden = true;
-    const result = await page.openDelete(message, signal);
-    if (lifetime.signal.aborted) return;
-
-    if (result === 'removed') {
-      removeMessage(message);
-      status.textContent = '该消息已从聊天中移除。';
-      return;
-    }
-
-    if (result === 'cancelled' || result === 'unavailable') selected.delete(message.id);
-    status.textContent = describeDeleteOutcome(result);
-  }
-
-  async function processBatch(batch, signal) {
+  async function processQueue(queue, signal) {
+    const scope = fields.scope.value;
     let removed = 0;
-    let skipped = 0;
-    let interruption;
-    let expectedChat = batch.chatId;
-    const total = batch.messages.length;
-
-    for (const [index, message] of batch.messages.entries()) {
-      if (signal.aborted) break;
-      if (expectedChat !== page.chat()?.id) {
-        interruption = 'wrong-chat';
-        break;
-      }
-
-      await prepareMessage(message, batch.scope, signal, true);
-      status.textContent = '正在处理 ' + (index + 1) + ' / ' + total + ' 条 · 已删除 ' + removed + ' 条';
-      const result = await page.openDelete(message, signal, { automatic: true });
+    panel.hidden = true;
+    onVisibilityChange?.();
+    for (const message of queue) {
+      await prepareMessage(message, scope, signal);
+      const result = await page.openDelete(message, signal);
       if (lifetime.signal.aborted) return;
-      if (result === 'removed') {
-        removeMessage(message);
-        removed++;
-      } else if (result === 'unavailable') {
-        selected.delete(message.id);
-        skipped++;
-        if (!await page.dismissMessageMenu(signal)) {
-          interruption = 'unavailable';
-          break;
-        }
-      } else {
-        interruption = result;
-        break;
+      if (result !== 'removed') {
+        const prefix = queue.length > 1 ? '已删除 ' + removed + ' / ' + queue.length + ' 条，队列已暂停。' : '';
+        refreshLoaded(prefix + describeDeleteOutcome(result));
+        return;
       }
-      expectedChat = message.channelId;
-      render();
+      removeMessage(message);
+      removed++;
     }
-
-    if (lifetime.signal.aborted) return;
-    const remaining = total - removed - skipped;
-    const counts = '已删除 ' + removed + ' 条，已跳过 ' + skipped + ' 条，未完成 ' + remaining + ' 条。';
-    status.textContent = signal.aborted ? '已停止批量删除。' + counts
-      : interruption ? '批量删除已暂停。' + counts + describeDeleteOutcome(interruption)
-      : '批量删除完成。' + counts;
+    refreshLoaded('已删除 ' + removed + ' 条，列表已刷新。');
+    collapseAfterCleanup = true;
   }
 
   function startQuickSelect() {
@@ -704,6 +614,6 @@ function openDiscordMessageCleanerPanel(onVisibilityChange) {
     if (!message) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    run((signal) => processMessage(message, signal));
+    run((signal) => processQueue([message], signal));
   }
 }

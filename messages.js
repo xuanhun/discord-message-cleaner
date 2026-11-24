@@ -137,66 +137,25 @@ var discordMessageCleanerPage = (() => {
   }
 
   async function waitForDismissal(dialog, message, signal) {
-    let intent;
+    let confirmed = false;
     const trackButton = (event) => {
-      const button = event.target.closest?.('button');
-      if (!button) return;
-      const classes = [...button.classList];
-      const label = button.textContent.trim();
-      if (isDeleteButton(button)) {
-        intent = 'confirm';
-      } else if (/^(取消|Cancel)$/i.test(label) || classes.some((name) => /^(secondary|icon-only)_/.test(name))) {
-        intent = 'cancel';
-      }
-    };
-    const trackEscape = (event) => {
-      if (event.key === 'Escape' && intent !== 'confirm') intent = 'cancel';
+      const button = event.target.closest?.('button:not(:disabled)');
+      if (event.isTrusted && button && isDeleteButton(button)) confirmed = true;
     };
     dialog.addEventListener('click', trackButton, true);
-    document.addEventListener('keydown', trackEscape, true);
     try {
       await waitFor(() => !dialog.isConnected || chat()?.id !== message.channelId, signal, Infinity);
     } finally {
       dialog.removeEventListener('click', trackButton, true);
-      document.removeEventListener('keydown', trackEscape, true);
     }
     if (signal.aborted || chat()?.id !== message.channelId) return 'interrupted';
-    if (intent === 'cancel') return 'cancelled';
+    if (!confirmed) return 'cancelled';
     const removed = await waitFor(() => !rowFor(message), signal, 2000);
     if (signal.aborted || chat()?.id !== message.channelId) return 'interrupted';
     return removed ? 'removed' : 'unchanged';
   }
 
-  async function confirmNativeDelete(dialog, message, signal) {
-    if (signal.aborted || chat()?.id !== message.channelId) return 'interrupted';
-    // Discord's preview uses the same ID as the original message. Text can be duplicated.
-    const target = dialog.querySelector(`[id="message-content-${message.id}"], [id="message-accessories-${message.id}"]`);
-    const buttons = [...dialog.querySelectorAll('button')].filter((button) =>
-      !button.disabled && button.getAttribute('aria-disabled') !== 'true' &&
-      button.getClientRects().length && isDeleteButton(button),
-    );
-    if (!target || buttons.length !== 1) return 'unverified';
-
-    buttons[0].click();
-    // A stop request prevents new deletions. Observe this already-dispatched action for the summary.
-    const observed = await waitFor(() => {
-      if (chat()?.id !== message.channelId) return 'wrong-chat';
-      if (!dialog.isConnected && !rowFor(message)) return 'removed';
-    }, new AbortController().signal, 3500);
-    return observed || 'unchanged';
-  }
-
-  async function dismissMessageMenu(signal) {
-    const find = () => document.querySelector('#message[role="menu"]');
-    const menu = find();
-    if (!menu) return true;
-    menu.dispatchEvent(new KeyboardEvent('keydown', {
-      key: 'Escape', code: 'Escape', bubbles: true, cancelable: true,
-    }));
-    return Boolean(await waitFor(() => !find(), signal, 700));
-  }
-
-  async function openDelete(message, signal, { automatic = false } = {}) {
+  async function openDelete(message, signal) {
     if (signal.aborted) return 'interrupted';
     if (chat()?.id !== message.channelId) return 'wrong-chat';
     if (document.querySelector(`#message[role="menu"], ${dialogSelector}`)) return 'busy';
@@ -232,13 +191,15 @@ var discordMessageCleanerPage = (() => {
     action.click();
     const dialog = await waitFor(() => document.querySelector(dialogSelector), signal, 1500);
     if (signal.aborted) return 'interrupted';
-    if (!dialog) return automatic || rowFor(message) ? 'dialog-missing' : 'removed';
-    if (automatic) return confirmNativeDelete(dialog, message, signal);
+    if (!dialog) return 'dialog-missing';
+    const preview = dialog.querySelector('[id^="message-content-"]');
+    if ((preview && preview.id !== `message-content-${message.id}`) ||
+        ![...dialog.querySelectorAll('button')].some(isDeleteButton)) return 'unverified';
     return waitForDismissal(dialog, message, signal);
   }
 
   return {
     rowSelector, dmHomeSelector, route, chat, getMessage, readChat, senderChoices, filterMessages, dmEntries,
-    waitFor, rowFor, hasChatRows, compareIds, openDelete, dismissMessageMenu,
+    waitFor, rowFor, hasChatRows, compareIds, openDelete,
   };
 })();

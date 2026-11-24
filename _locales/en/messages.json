@@ -1,11 +1,35 @@
 {
-  "extensionName": { "message": "Discord Message Cleaner" },
-  "extensionDescription": { "message": "Filter Discord messages in a floating panel, review your selection, and confirm once to delete the batch." },
-  "openPanel": { "message": "Open Discord Message Cleaner" },
-  "collapsePanel": { "message": "Collapse Discord Message Cleaner" },
-  "checkingTab": { "message": "Checking the current tab…" },
-  "switchToDiscord": { "message": "Open a Discord channel or DM to use the cleaner. If Discord is already open, refresh that tab and try again." },
-  "openDiscord": { "message": "Open Discord" },
-  "retry": { "message": "Try again" },
-  "openTabFailed": { "message": "Could not open a tab. Go to discord.com and open a channel or DM." }
+  "extensionName": {
+    "message": "Discord Message Cleaner"
+  },
+  "extensionDescription": {
+    "message": "Filter and preview Discord messages in a floating panel and open the native confirmation for each deletion."
+  },
+  "openPanel": {
+    "message": "Open Discord Message Cleaner"
+  },
+  "collapsePanel": {
+    "message": "Collapse Discord Message Cleaner"
+  },
+  "checkingTab": {
+    "message": "Checking the current tab…"
+  },
+  "switchToDiscord": {
+    "message": "Open an existing Discord tab or start Discord from here."
+  },
+  "chooseChat": {
+    "message": "Choose a text channel or direct message on this Discord tab."
+  },
+  "setupFailed": {
+    "message": "Could not start the cleaner in this tab. Check the extension's site access for discord.com and try again."
+  },
+  "openDiscord": {
+    "message": "Open Discord"
+  },
+  "retry": {
+    "message": "Try again"
+  },
+  "openTabFailed": {
+    "message": "Could not open a tab. Go to discord.com and open a channel or DM."
+  }
 }

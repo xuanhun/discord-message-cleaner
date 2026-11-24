@@ -1,4 +1,3 @@
-const discordHome = 'https://discord.com/channels/@me';
 const statusText = document.getElementById('status');
 const openDiscord = document.getElementById('open-discord');
 const retry = document.getElementById('retry');
@@ -12,13 +11,20 @@ for (const element of document.querySelectorAll('[data-message]')) {
 
 openDiscord.addEventListener('click', async () => {
   try {
-    await chrome.tabs.create({ url: discordHome });
-    window.close();
+    if (await chrome.runtime.sendMessage({ type: 'discord-message-cleaner:go-to-discord' })) {
+      window.close();
+      return;
+    }
   } catch {
-    statusText.textContent = message('openTabFailed');
+    // Display the same fallback if the service worker is unavailable.
   }
+  statusText.textContent = message('openTabFailed');
 });
 retry.addEventListener('click', openPanel);
+
+function openPanelIn(tabId) {
+  return chrome.runtime.sendMessage({ type: 'discord-message-cleaner:open-tab', tabId });
+}
 
 async function openPanel() {
   retry.hidden = true;
@@ -28,14 +34,21 @@ async function openPanel() {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tab?.id !== undefined) {
-      const reply = await chrome.tabs.sendMessage(tab.id, { type: 'discord-message-cleaner:open' });
+      const reply = await openPanelIn(tab.id);
       if (reply?.opened) {
         window.close();
         return;
       }
+      if (reply?.discord || reply?.failed) {
+        statusText.textContent = message(reply.failed ? 'setupFailed' : 'chooseChat');
+        retry.hidden = false;
+        return;
+      }
     }
   } catch {
-    // Tabs outside Discord, or tabs opened before installation, have no receiver.
+    statusText.textContent = message('setupFailed');
+    retry.hidden = false;
+    return;
   }
   statusText.textContent = message('switchToDiscord');
   openDiscord.hidden = false;

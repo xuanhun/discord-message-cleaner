@@ -1,8 +1,21 @@
 (() => {
+  if (globalThis.discordMessageCleanerLauncherInstalled) return;
+  globalThis.discordMessageCleanerLauncherInstalled = true;
+
+  const runtimeId = chrome.runtime.id;
+  const launcherId = 'discord-message-cleaner-launcher';
+  const panelId = 'discord-message-cleaner-picker';
+  const quickId = 'discord-message-cleaner-quick';
+  const legacyLauncher = `[id="${launcherId}"]:not([data-dmc-current])`;
+  document.getElementById(panelId)?.remove();
+  document.getElementById(quickId)?.remove();
+  document.documentElement.removeAttribute('data-discord-message-cleaner');
+
   const launcher = document.createElement('button');
   launcher.type = 'button';
-  launcher.id = 'discord-message-cleaner-launcher';
-  launcher.setAttribute('aria-controls', 'discord-message-cleaner-picker');
+  launcher.id = launcherId;
+  launcher.dataset.dmcCurrent = '';
+  launcher.setAttribute('aria-controls', panelId);
 
   const icon = document.createElement('img');
   icon.src = chrome.runtime.getURL('icons/icon-48.png');
@@ -13,9 +26,10 @@
     open: chrome.i18n.getMessage('openPanel'),
     collapse: chrome.i18n.getMessage('collapsePanel'),
   };
-  const getPanel = () => document.getElementById('discord-message-cleaner-picker');
+  const getPanel = () => document.getElementById(panelId);
 
-  function syncLauncher({ collapsed = false } = {}) {
+  function syncLauncher({ focusLauncher = false } = {}) {
+    document.querySelector(legacyLauncher)?.remove();
     if (!discordMessageCleanerPage.route()) {
       launcher.remove();
       return;
@@ -29,7 +43,7 @@
       launcher.setAttribute('aria-label', label);
       launcher.title = label;
     }
-    if (collapsed) launcher.focus();
+    if (focusLauncher) launcher.focus();
   }
 
   launcher.addEventListener('click', () => {
@@ -43,7 +57,12 @@
   });
 
   chrome.runtime.onMessage.addListener((request, sender, reply) => {
-    if (request?.type !== 'discord-message-cleaner:open' || sender.id !== chrome.runtime.id) return;
+    if (sender.id !== runtimeId) return;
+    if (request?.type === 'discord-message-cleaner:ping') {
+      reply({ ready: true });
+      return;
+    }
+    if (request?.type !== 'discord-message-cleaner:open') return;
     const opened = openDiscordMessageCleanerPanel(syncLauncher);
     syncLauncher();
     reply({ opened });
@@ -51,5 +70,12 @@
 
   syncLauncher();
   // Discord changes conversations through same-document navigation.
-  setInterval(syncLauncher, 350);
+  const navigation = setInterval(() => {
+    if (chrome.runtime?.id === runtimeId) {
+      syncLauncher();
+    } else {
+      clearInterval(navigation);
+      launcher.remove();
+    }
+  }, 350);
 })();
