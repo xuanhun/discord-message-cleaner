@@ -1,9 +1,9 @@
 {
   "extensionName": {
-    "message": "Discord 消息清理"
+    "message": "Discord 消息清理（本地批量版）"
   },
   "extensionDescription": {
-    "message": "用悬浮面板筛选和预览 Discord 消息，逐条打开 Discord 的原生删除确认。"
+    "message": "用悬浮面板筛选和预览 Discord 消息。多选后确认一次，即可自动删除所选消息。"
   },
   "openPanel": {
     "message": "展开 Discord 消息清理"

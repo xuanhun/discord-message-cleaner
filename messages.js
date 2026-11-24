@@ -136,6 +136,24 @@ var discordMessageCleanerPage = (() => {
       [...button.classList].some((name) => name.startsWith('critical-primary_'));
   }
 
+  async function confirmNativeDelete(dialog, message, signal) {
+    if (signal.aborted || chat()?.id !== message.channelId) return 'interrupted';
+    const preview = dialog.querySelector(
+      `[id="message-content-${message.id}"], [id="message-accessories-${message.id}"]`,
+    );
+    const buttons = [...dialog.querySelectorAll('button:enabled:not([aria-disabled="true"])')]
+      .filter((button) => button.getClientRects().length && isDeleteButton(button));
+    if (!dialog.isConnected || !rowFor(message) || !preview || buttons.length !== 1) return 'unverified';
+
+    buttons[0].click();
+    // Observe an already dispatched deletion even if the user stops the queue.
+    const result = await waitFor(() => {
+      if (chat()?.id !== message.channelId) return 'wrong-chat';
+      if (!dialog.isConnected && !rowFor(message)) return 'removed';
+    }, new AbortController().signal, 3500);
+    return result || 'unchanged';
+  }
+
   async function waitForDismissal(dialog, message, signal) {
     let confirmed = false;
     const trackButton = (event) => {
@@ -155,7 +173,7 @@ var discordMessageCleanerPage = (() => {
     return removed ? 'removed' : 'unchanged';
   }
 
-  async function openDelete(message, signal) {
+  async function openDelete(message, signal, { automatic = false } = {}) {
     if (signal.aborted) return 'interrupted';
     if (chat()?.id !== message.channelId) return 'wrong-chat';
     if (document.querySelector(`#message[role="menu"], ${dialogSelector}`)) return 'busy';
@@ -195,6 +213,7 @@ var discordMessageCleanerPage = (() => {
     const preview = dialog.querySelector('[id^="message-content-"]');
     if ((preview && preview.id !== `message-content-${message.id}`) ||
         ![...dialog.querySelectorAll('button')].some(isDeleteButton)) return 'unverified';
+    if (automatic) return confirmNativeDelete(dialog, message, signal);
     return waitForDismissal(dialog, message, signal);
   }
 

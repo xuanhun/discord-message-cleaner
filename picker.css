@@ -265,6 +265,21 @@ body:has([role="alertdialog"]:not([aria-hidden="true"])) #discord-message-cleane
   background: #2645aa;
 }
 
+#discord-message-cleaner-picker button.dmc-destructive {
+  border-color: #ad2b3f;
+  color: #fff;
+  background: #ad2b3f;
+}
+
+#discord-message-cleaner-picker button.dmc-destructive:not(:disabled):hover {
+  background: #922237;
+}
+
+#discord-message-cleaner-picker [data-batch-review] p {
+  margin: 3px 0 8px;
+  color: var(--dmc-muted);
+}
+
 #discord-message-cleaner-picker button:disabled {
   cursor: default;
   opacity: .5;

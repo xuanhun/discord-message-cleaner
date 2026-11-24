@@ -1,9 +1,9 @@
 {
   "extensionName": {
-    "message": "Discord Message Cleaner"
+    "message": "Discord Message Cleaner (Local Batch)"
   },
   "extensionDescription": {
-    "message": "Filter and preview Discord messages in a floating panel and open the native confirmation for each deletion."
+    "message": "Filter and preview Discord messages in a floating panel. Confirm once to delete multiple selected messages."
   },
   "openPanel": {
     "message": "Open Discord Message Cleaner"
